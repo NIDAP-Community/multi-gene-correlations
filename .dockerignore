@@ -1,0 +1,13 @@
+output/
+*.csv
+*.tsv
+*.txt
+.git/
+.gitignore
+.DS_Store
+*.Rproj
+.Rproj.user/
+*.png
+*.pdf
+*.rds
+*.RData

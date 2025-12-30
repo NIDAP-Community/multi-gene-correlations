@@ -1,0 +1,18 @@
+# Generated outputs
+output/
+
+# Local data or large artifacts
+*.tsv
+*.csv
+*.txt
+*.png
+*.pdf
+*.rds
+*.RData
+
+# R / macOS defaults
+.Rhistory
+.RData
+.Rproj.user/
+*.Rproj
+.DS_Store
