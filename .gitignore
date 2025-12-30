@@ -16,3 +16,5 @@ output/
 .Rproj.user/
 *.Rproj
 .DS_Store
+BUILD_AND_PUSH.md
+QUICK_START.md
