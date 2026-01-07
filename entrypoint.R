@@ -46,7 +46,7 @@ parse_bool <- function(x, default = FALSE) {
     if (t %in% c("true", "t", "1", "yes", "y")) {
         return(TRUE)
     }
-    if (t %in% c("false", "f", , "no", "n")) {
+    if (t %in% c("false", "f", "0", "no", "n")) {
         return(FALSE)
     }
     default
