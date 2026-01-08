@@ -209,15 +209,15 @@ if (!is.null(res$plots$barplots) && length(res$plots$barplots) > 0) {
 # Save heatmap
 if (!is.null(res$plots$heatmap)) {
     fn <- file.path(heat_out, "heatmap.png")
-    png(fn, width = 1800, height = 2000, res = 150)
+    png(fn, width = 1800, height = 2200, res = 150)
     try(
         {
             ComplexHeatmap::draw(
                 res$plots$heatmap,
-                heatmap_legend_side = "right",
-                annotation_legend_side = "right",
-                heatmap_legend_col = 1,
-                annotation_legend_col = 1
+                heatmap_legend_side = "bottom",
+                annotation_legend_side = "bottom",
+                heatmap_legend_col = 3,
+                annotation_legend_col = 3
             )
         },
         silent = TRUE
