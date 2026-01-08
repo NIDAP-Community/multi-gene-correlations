@@ -113,7 +113,7 @@ opt <- modifyList(list(
     heatmap_dir = "",
     scatter_dir = "",
     tables_dir = "",
-    margin_adjust = "-11",
+    margin_adjust = "4",
     show_row_dendrogram = "false",
     heatmap_width = "6",
     add_text_to_heatmap = "true",
@@ -209,18 +209,24 @@ if (!is.null(res$plots$barplots) && length(res$plots$barplots) > 0) {
 # Save heatmap
 if (!is.null(res$plots$heatmap)) {
     fn <- file.path(heat_out, "heatmap.png")
-    png(fn, width = 1800, height = 2200, res = 150)
-    try(
+
+    # Fixed-size device to match the earlier version that only had the legend too far right
+    res_dpi <- 150
+    png(fn, width = 2600, height = 2400, res = res_dpi)
+    tryCatch(
         {
+            grid::grid.newpage()
             ComplexHeatmap::draw(
                 res$plots$heatmap,
-                heatmap_legend_side = "bottom",
-                annotation_legend_side = "bottom",
-                heatmap_legend_col = 3,
-                annotation_legend_col = 3
+                heatmap_legend_side = "right",
+                annotation_legend_side = "right",
+                padding = grid::unit(c(1.0, 11.0, 1.2, 1.0), "cm")
             )
         },
-        silent = TRUE
+        error = function(e) {
+            cat("Error drawing heatmap:\n")
+            print(e)
+        }
     )
     dev.off()
 }
