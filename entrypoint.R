@@ -212,7 +212,11 @@ if (!is.null(res$plots$heatmap)) {
     png(fn, width = 1600, height = 2000, res = 150)
     try(
         {
-            ComplexHeatmap::draw(res$plots$heatmap)
+            ComplexHeatmap::draw(
+                res$plots$heatmap,
+                heatmap_legend_side = "right",
+                annotation_legend_side = "right"
+            )
         },
         silent = TRUE
     )
