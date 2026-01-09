@@ -6,6 +6,7 @@ output/
 *.csv
 *.txt
 *.png
+!docs/images/*.png
 *.pdf
 *.rds
 *.RData

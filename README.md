@@ -2,6 +2,17 @@
 
 A containerized R tool for computing Pearson correlations between a gene panel and a signature score across user-defined sample categories. Generates per-category bar plots, scatter plots, and an aggregate heatmap.
 
+## Example Outputs
+
+Representative run (TCGA PRAD; categories TP vs NT) with default plotting parameters:
+
+- Heatmap (correlations by gene and category):
+  ![Correlation heatmap](docs/images/heatmap.png)
+- Per-category bar plot:
+  ![Bar plot](docs/images/barplot_all.png)
+- Per-category scatter (signature vs gene expression):
+  ![Scatter plot](docs/images/scatter_all.png)
+
 ## Features
 
 - Correlate gene expression against a signature score
