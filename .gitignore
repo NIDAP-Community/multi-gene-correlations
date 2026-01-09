@@ -10,6 +10,13 @@ output/
 *.pdf
 *.rds
 *.RData
+barplots/
+heatmap/
+scatter/
+tables/
+metadata/
+results/
+output/
 
 # R / macOS defaults
 .Rhistory
@@ -19,3 +26,7 @@ output/
 .DS_Store
 BUILD_AND_PUSH.md
 QUICK_START.md
+
+
+# Git files
+.github/

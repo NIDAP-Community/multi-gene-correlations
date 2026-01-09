@@ -23,7 +23,7 @@ These screenshots use metadata values `TP` and `NT`; match your own metadata val
 - Flexible input formats (CSV/TSV auto-detection)
 - Comprehensive outputs: tables, bar plots, heatmap, scatter plots
 - Command-line interface for batch processing
-- Available as Docker and Singularity containers
+- Available as a Docker/OCI image (GHCR). Singularity/Apptainer is supported by pulling the Docker image (singularity pull … docker://…) to produce a .sif.
 
 ## Container Images
 
@@ -254,7 +254,8 @@ cd multi-gene-correlations
 ### Build Docker Image
 
 ```bash
-docker build -t multi-gene-correlations:latest .
+docker build -t multi-gene-correlations:latest -f container/Dockerfile .
+# On Apple Silicon, add: --platform linux/amd64
 ```
 
 ### Convert to Singularity

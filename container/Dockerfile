@@ -1,4 +1,6 @@
 # syntax=docker/dockerfile:1
+## Build with: docker build -f container/Dockerfile .
+
 FROM rocker/r-ver:4.5.2
 
 LABEL org.opencontainers.image.title="Multi-Gene Correlations to Signature" \
@@ -55,7 +57,7 @@ WORKDIR /app
 # Copy source and CLI entrypoint
 COPY Multi_Gene_Correlations_to_Signature.R /app/
 COPY entrypoint.R /app/
-COPY Dockerfile /app/
+COPY container/Dockerfile /app/Dockerfile
 COPY README.md /app/
 
 # Ensure R can see apt-installed libraries at runtime
