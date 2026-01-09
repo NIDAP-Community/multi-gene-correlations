@@ -5,4 +5,5 @@
 - Updated README to remove ambiguity about Singularity availability.
 - No functional code changes.
 - Relocated Dockerfile into container/ and rebuilt image (linux/amd64). Verified container run with TCGA PRAD example after move.
+- Added docs/architecture.md outlining components, flow, I/O, and platform notes.
 
