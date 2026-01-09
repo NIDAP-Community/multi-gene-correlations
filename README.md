@@ -13,6 +13,8 @@ Representative run (TCGA PRAD; categories TP vs NT) with default plotting parame
 - Per-category scatter (signature vs gene expression):
   ![Scatter plot](docs/images/scatter_all.png)
 
+These screenshots use metadata values `TP` and `NT`; match your own metadata values in `--categories` (and optionally `--rename_categories` if you want display labels to differ from underlying values).
+
 ## Features
 
 - Correlate gene expression against a signature score
