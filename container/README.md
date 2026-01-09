@@ -127,13 +127,5 @@ singularity run
 
 (Exact flags depend on the entrypoint’s CLI; consult the top-level README for tool usage.)
 
----
-
-## What does NOT belong here
-
-- Tool usage documentation → top-level README
-- Architecture decisions → docs/architecture.md
-- Release history → CHANGELOG.md
-- Container binaries (`.sif`) → GitHub Releases only (optional)
 
 
