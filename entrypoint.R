@@ -163,7 +163,7 @@ category_col <- resolve_column(colnames(meta), opt$category_column)
 source("/app/Multi_Gene_Correlations_to_Signature.R")
 
 # Run
-res <- Multi_Gene_Correlations_to_Signature_IODC_Beta(
+res <- Multi_Gene_Correlations_to_Signature(
     normalized_counts = counts,
     sample_metadata = meta,
     gene_column = gene_col,

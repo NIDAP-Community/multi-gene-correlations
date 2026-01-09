@@ -5,7 +5,7 @@ Containerized R CLI that computes gene-to-signature correlations and produces pl
 
 ## Execution Flow
 1) `entrypoint.R` parses CLI flags, loads counts/metadata, resolves columns, and calls the core function.
-2) `Multi_Gene_Correlations_to_Signature_IODC_Beta` performs correlation analysis, builds plots (bar, scatter, heatmap), and returns data frames + ggplot/ComplexHeatmap objects.
+2) `Multi_Gene_Correlations_to_Signature` performs correlation analysis, builds plots (bar, scatter, heatmap), and returns data frames + ggplot/ComplexHeatmap objects.
 3) `entrypoint.R` writes outputs under the user-specified `output_dir` (tables/, barplots/, scatter/, heatmap/, metadata/).
 
 ## Container Layout

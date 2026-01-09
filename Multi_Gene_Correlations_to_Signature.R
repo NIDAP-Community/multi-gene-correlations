@@ -40,7 +40,7 @@ utils::globalVariables(c(
 #'   heatmap object), and `run_parameters` (metadata describing the run setup).
 #' @export
 #'
-Multi_Gene_Correlations_to_Signature_IODC_Beta <- function(
+Multi_Gene_Correlations_to_Signature <- function(
   normalized_counts,
   sample_metadata,
   gene_column,
@@ -51,7 +51,7 @@ Multi_Gene_Correlations_to_Signature_IODC_Beta <- function(
   categories = character(),
   signature_name = "Signature",
   signature_genes = character(),
-  margin_adjust = -11,
+  margin_adjust = 4,
   show_row_dendrogram = FALSE,
   heatmap_width = 6,
   add_text_to_heatmap = TRUE,
@@ -434,7 +434,7 @@ Multi_Gene_Correlations_to_Signature_IODC_Beta <- function(
         colnames(correlation_matrix) <- display_names
 
         heatmap_title_text <- sprintf("Gene correlations to %s", full_signature_title)
-        heatmap_title <- stringr::str_wrap(heatmap_title_text, width = ifelse(nchar(heatmap_title_text) > 80, 60, 80))
+        heatmap_title <- stringr::str_wrap(heatmap_title_text, width = 40)
 
         max_abs_corr <- max(abs(correlation_matrix), na.rm = TRUE)
         if (!is.finite(max_abs_corr) || max_abs_corr == 0) {
@@ -457,25 +457,25 @@ Multi_Gene_Correlations_to_Signature_IODC_Beta <- function(
         col_fun <- circlize::colorRamp2(color_breaks, c("darkblue", "lightblue", "white", "pink", "darkred"))
         heatmap_object <- ComplexHeatmap::Heatmap(
             correlation_matrix,
-            name = "Value",
+            name = "Correlation",
             column_title = heatmap_title,
             col = col_fun,
             show_row_dend = show_row_dendrogram,
             width = grid::unit(rep(heatmap_width, ncol(correlation_matrix)), "cm"),
             row_names_side = "left",
+            row_names_max_width = grid::unit(6, "cm"),
             heatmap_legend_param = list(
                 title = "Correlation",
                 at = legend_breaks,
                 labels = legend_labels
             )
         )
-        heatmap_object@layout$layout_size$row_names_right_width <- grid::unit(margin_adjust, "cm")
         if (isTRUE(add_text_to_heatmap)) {
             heatmap_object@matrix_param$cell_fun <- function(j, i, x, y, width, height, fill) {
                 grid::grid.text(sprintf("%.1f", correlation_matrix[i, j]), x, y, gp = grid::gpar(fontsize = 10))
             }
         }
-        print(heatmap_object)
+        # print(heatmap_object)
     }
 
     merged_df <- Reduce(function(acc, tbl) dplyr::full_join(acc, tbl, by = "gene"), gene_tables)
