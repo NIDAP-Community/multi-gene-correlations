@@ -35,6 +35,9 @@ utils::globalVariables(c(
 #' @param add_text_to_heatmap Logical; when `TRUE`, prints correlation values inside the heatmap cells.
 #' @param rename_categories Optional character vector supplying display labels for each category in order.
 #' @param sum_duplicates Logical; when `TRUE`, duplicate gene rows are summed, otherwise the maximum row is kept.
+#' @param clinical_columns Character vector naming metadata columns to correlate against the signature or gene panel.
+#' @param clinical_use_signature Logical; when `TRUE`, correlate the computed signature score with the requested clinical columns.
+#' @param clinical_use_genes Logical; when `TRUE`, compute per-gene correlations versus the requested clinical columns.
 #'
 #' @return List with components `pathways` (merged correlation table), `plots` (per-category bar plots and the
 #'   heatmap object), and `run_parameters` (metadata describing the run setup).
@@ -56,7 +59,10 @@ Multi_Gene_Correlations_to_Signature <- function(
   heatmap_width = 6,
   add_text_to_heatmap = TRUE,
   rename_categories = character(),
-  sum_duplicates = FALSE
+    sum_duplicates = FALSE,
+    clinical_columns = character(),
+    clinical_use_signature = TRUE,
+    clinical_use_genes = FALSE
 ) {
     suppressPackageStartupMessages({
         library(dplyr)
@@ -102,6 +108,25 @@ Multi_Gene_Correlations_to_Signature <- function(
     categories <- unique(categories)
     if (length(rename_categories) > 0 && length(rename_categories) != length(categories)) {
         stop("rename_categories must be empty or match the length of categories.")
+    }
+
+    if (!is.logical(clinical_use_signature) || length(clinical_use_signature) != 1) {
+        stop("clinical_use_signature must be a single logical value.")
+    }
+    if (!is.logical(clinical_use_genes) || length(clinical_use_genes) != 1) {
+        stop("clinical_use_genes must be a single logical value.")
+    }
+    clinical_columns <- unique(clinical_columns)
+    clinical_columns <- clinical_columns[clinical_columns != ""]
+    if (length(clinical_columns) > 0) {
+        missing_clinical <- setdiff(clinical_columns, colnames(sample_metadata))
+        if (length(missing_clinical) > 0) {
+            warning(sprintf(
+                "Clinical columns not found in metadata and will be ignored: %s",
+                paste(missing_clinical, collapse = ", ")
+            ))
+            clinical_columns <- intersect(clinical_columns, colnames(sample_metadata))
+        }
     }
 
     meta_filtered <- sample_metadata %>%
@@ -382,6 +407,230 @@ Multi_Gene_Correlations_to_Signature <- function(
         list(table = tidy_table, plot = gp, scatter = scatter_df)
     }
 
+    correlate_rows_with_vector <- function(expr_matrix, target_vec, target_label, target_type) {
+        if (is.null(expr_matrix) || nrow(expr_matrix) == 0) {
+            return(NULL)
+        }
+        gene_names <- rownames(expr_matrix)
+        results <- lapply(seq_along(gene_names), function(idx) {
+            row_values <- expr_matrix[idx, ]
+            ok <- stats::complete.cases(row_values, target_vec)
+            n_ok <- sum(ok)
+            if (n_ok < 3) {
+                return(data.frame(
+                    gene = gene_names[idx],
+                    clinical_target = target_label,
+                    target_type = target_type,
+                    corr = NA_real_,
+                    p_value = NA_real_,
+                    conf_low = NA_real_,
+                    conf_high = NA_real_,
+                    n = n_ok,
+                    stringsAsFactors = FALSE
+                ))
+            }
+            test_result <- suppressWarnings(stats::cor.test(row_values[ok], target_vec[ok], method = "pearson"))
+            ci_vals <- if (!is.null(test_result$conf.int) && length(test_result$conf.int) >= 2) {
+                test_result$conf.int[1:2]
+            } else {
+                c(NA_real_, NA_real_)
+            }
+            data.frame(
+                gene = gene_names[idx],
+                clinical_target = target_label,
+                target_type = target_type,
+                corr = unname(test_result$estimate),
+                p_value = test_result$p.value,
+                conf_low = ci_vals[1],
+                conf_high = ci_vals[2],
+                n = n_ok,
+                stringsAsFactors = FALSE
+            )
+        })
+        df <- dplyr::bind_rows(results)
+        if (nrow(df) == 0) {
+            return(NULL)
+        }
+        df$p_adj <- stats::p.adjust(df$p_value, method = "BH")
+        df
+    }
+
+    correlate_signature_with_vector <- function(signature_vec, target_vec, target_label, target_type) {
+        ok <- stats::complete.cases(signature_vec, target_vec)
+        n_ok <- sum(ok)
+        if (n_ok < 3) {
+            return(NULL)
+        }
+        test_result <- suppressWarnings(stats::cor.test(signature_vec[ok], target_vec[ok], method = "pearson"))
+        ci_vals <- if (!is.null(test_result$conf.int) && length(test_result$conf.int) >= 2) {
+            test_result$conf.int[1:2]
+        } else {
+            c(NA_real_, NA_real_)
+        }
+        data.frame(
+            clinical_target = target_label,
+            target_type = target_type,
+            corr = unname(test_result$estimate),
+            p_value = test_result$p.value,
+            conf_low = ci_vals[1],
+            conf_high = ci_vals[2],
+            n = n_ok,
+            stringsAsFactors = FALSE
+        )
+    }
+
+    compute_clinical_correlations <- function(
+        clinical_columns,
+        metadata,
+        sample_column,
+        expression_matrix,
+        signature_values,
+        use_signature,
+        use_genes
+    ) {
+        if (length(clinical_columns) == 0 || (!use_signature && !use_genes)) {
+            return(NULL)
+        }
+
+        meta_ready <- metadata %>%
+            filter(.data[[sample_column]] %in% colnames(expression_matrix)) %>%
+            distinct(.data[[sample_column]], .keep_all = TRUE)
+
+        sample_order <- colnames(expression_matrix)
+        meta_ready <- meta_ready %>%
+            mutate(.order = match(.data[[sample_column]], sample_order)) %>%
+            filter(!is.na(.order)) %>%
+            arrange(.order) %>%
+            select(-.order)
+
+        if (nrow(meta_ready) == 0) {
+            warning("No overlapping metadata rows available for clinical correlations after filtering.")
+            return(NULL)
+        }
+
+        expression_aligned <- expression_matrix[, meta_ready[[sample_column]], drop = FALSE]
+        signature_aligned <- signature_values[meta_ready[[sample_column]]]
+
+        gene_rows <- list()
+        signature_rows <- list()
+        plot_list <- list()
+        signature_axis_title <- sprintf("%s Score", signature_name)
+
+        for (clinical_col in clinical_columns) {
+            if (!clinical_col %in% colnames(meta_ready)) {
+                warning(sprintf("Clinical column '%s' not found after filtering; skipping.", clinical_col))
+                next
+            }
+            column_values <- meta_ready[[clinical_col]]
+            value_type <- if (is.numeric(column_values) || is.integer(column_values) || is.logical(column_values)) {
+                "numeric"
+            } else {
+                "categorical"
+            }
+
+            if (value_type == "numeric") {
+                numeric_vec <- as.numeric(column_values)
+                ok <- which(is.finite(numeric_vec) & is.finite(signature_aligned))
+                if (length(ok) < 3) {
+                    warning(sprintf("Clinical column '%s' has fewer than 3 overlapping samples; skipping.", clinical_col))
+                    next
+                }
+                if (use_genes) {
+                    gene_rows[[clinical_col]] <- correlate_rows_with_vector(
+                        expression_aligned[, ok, drop = FALSE],
+                        numeric_vec[ok],
+                        clinical_col,
+                        "numeric"
+                    )
+                }
+                if (use_signature) {
+                    sig_row <- correlate_signature_with_vector(signature_aligned[ok], numeric_vec[ok], clinical_col, "numeric")
+                    if (!is.null(sig_row)) {
+                        signature_rows[[clinical_col]] <- sig_row
+                        plot_list[[paste0("scatter_", clinical_col)]] <- ggplot(
+                            data.frame(
+                                clinical_value = numeric_vec[ok],
+                                signature = signature_aligned[ok]
+                            ),
+                            aes(x = clinical_value, y = signature)
+                        ) +
+                            geom_point(alpha = 0.7, color = "#2c7fb8") +
+                            geom_smooth(method = "lm", se = FALSE, color = "#f03b20") +
+                            theme_bw() +
+                            labs(
+                                title = sprintf("Signature vs %s", clinical_col),
+                                x = clinical_col,
+                                y = signature_axis_title
+                            )
+                    }
+                }
+            } else {
+                factor_vec <- as.factor(column_values)
+                ok <- which(!is.na(factor_vec) & is.finite(signature_aligned))
+                if (length(ok) < 3) {
+                    warning(sprintf("Clinical column '%s' lacks sufficient overlapping samples after filtering; skipping.", clinical_col))
+                    next
+                }
+                factor_sub <- droplevels(factor_vec[ok])
+                if (nlevels(factor_sub) < 2) {
+                    warning(sprintf("Clinical column '%s' requires at least two levels after filtering; skipping.", clinical_col))
+                    next
+                }
+                if (use_signature) {
+                    plot_list[[paste0("box_", clinical_col)]] <- ggplot(
+                        data.frame(
+                            group = factor_sub,
+                            signature = signature_aligned[ok]
+                        ),
+                        aes(x = group, y = signature, fill = group)
+                    ) +
+                        geom_boxplot(outlier.alpha = 0.6) +
+                        theme_bw() +
+                        scale_fill_brewer(palette = "Set2", guide = "none") +
+                        labs(
+                            title = sprintf("Signature vs %s", clinical_col),
+                            x = clinical_col,
+                            y = signature_axis_title
+                        )
+                }
+                for (lvl in levels(factor_sub)) {
+                    indicator <- as.numeric(factor_sub == lvl)
+                    if (length(unique(indicator)) < 2) {
+                        next
+                    }
+                    target_label <- sprintf("%s==%s", clinical_col, lvl)
+                    if (use_genes) {
+                        gene_rows[[paste0(clinical_col, "_", lvl)]] <- correlate_rows_with_vector(
+                            expression_aligned[, ok, drop = FALSE],
+                            indicator,
+                            target_label,
+                            "categorical"
+                        )
+                    }
+                    if (use_signature) {
+                        sig_row <- correlate_signature_with_vector(signature_aligned[ok], indicator, target_label, "categorical")
+                        if (!is.null(sig_row)) {
+                            signature_rows[[paste0(clinical_col, "_", lvl)]] <- sig_row
+                        }
+                    }
+                }
+            }
+        }
+
+        gene_df <- if (length(gene_rows) > 0) dplyr::bind_rows(gene_rows) else NULL
+        signature_df <- if (length(signature_rows) > 0) dplyr::bind_rows(signature_rows) else NULL
+
+        if (is.null(gene_df) && is.null(signature_df) && length(plot_list) == 0) {
+            return(NULL)
+        }
+
+        list(
+            gene_correlations = gene_df,
+            signature_correlations = signature_df,
+            plots = plot_list
+        )
+    }
+
     category_labels <- if (length(rename_categories) > 0) rename_categories else categories
     names(category_labels) <- categories
 
@@ -498,6 +747,16 @@ Multi_Gene_Correlations_to_Signature <- function(
     })
     names(scatter_plots) <- names(scatter_records)
 
+    clinical_results <- compute_clinical_correlations(
+        clinical_columns = clinical_columns,
+        metadata = meta_filtered,
+        sample_column = sample_column,
+        expression_matrix = gene_expression,
+        signature_values = signature_vector,
+        use_signature = clinical_use_signature,
+        use_genes = clinical_use_genes
+    )
+
     run_parameters <- list(
         template_id = "ri.vector.main.template.363cef88-16c4-433b-a709-58aa605f0958",
         version = 14,
@@ -518,14 +777,23 @@ Multi_Gene_Correlations_to_Signature <- function(
         margin_adjust = margin_adjust,
         show_row_dendrogram = show_row_dendrogram,
         add_text_to_heatmap = add_text_to_heatmap,
-        fdr_correction = "BH"
+        fdr_correction = "BH",
+        clinical_columns_requested = clinical_columns,
+        clinical_use_signature = clinical_use_signature,
+        clinical_use_genes = clinical_use_genes
     )
 
     plots <- list(
         barplots = bar_plots,
         heatmap = heatmap_object,
-        scatter = scatter_plots
+        scatter = scatter_plots,
+        clinical = if (!is.null(clinical_results)) clinical_results$plots else NULL
     )
 
-    list(pathways = merged_df, plots = plots, run_parameters = run_parameters)
+    list(
+        pathways = merged_df,
+        plots = plots,
+        run_parameters = run_parameters,
+        clinical_results = clinical_results
+    )
 }

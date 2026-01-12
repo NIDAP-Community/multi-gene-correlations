@@ -71,6 +71,29 @@ resolve_column <- function(cols, desired) {
     desired
 }
 
+locate_core_script <- function(filename) {
+    args <- commandArgs(FALSE)
+    script_arg <- args[grepl("^--file=", args)]
+    script_path <- if (length(script_arg) > 0) {
+        normalizePath(sub("^--file=", "", script_arg[1]), mustWork = FALSE)
+    } else {
+        NA_character_
+    }
+    script_dir <- if (!is.na(script_path)) dirname(script_path) else getwd()
+    candidates <- unique(c(
+        Sys.getenv("MGCS_CORE_PATH", ""),
+        file.path(script_dir, filename),
+        file.path(getwd(), filename),
+        file.path("/app", filename)
+    ))
+    candidates <- candidates[candidates != ""]
+    existing <- candidates[file.exists(candidates)]
+    if (length(existing) == 0) {
+        stop(sprintf("Unable to locate core script '%s'. Checked: %s", filename, paste(candidates, collapse = ", ")))
+    }
+    existing[1]
+}
+
 parse_kv_args <- function() {
     args <- commandArgs(trailingOnly = TRUE)
     out <- list()
@@ -118,7 +141,10 @@ opt <- modifyList(list(
     heatmap_width = "6",
     add_text_to_heatmap = "true",
     rename_categories = "",
-    sum_duplicates = "false"
+    sum_duplicates = "false",
+    clinical_columns = "",
+    clinical_use_signature = "true",
+    clinical_use_genes = "false"
 ), parse_kv_args())
 
 # Validate required inputs
@@ -139,6 +165,9 @@ rename_categories <- parse_list(opt$rename_categories)
 show_row_dendrogram <- parse_bool(opt$show_row_dendrogram, FALSE)
 add_text_to_heatmap <- parse_bool(opt$add_text_to_heatmap, TRUE)
 sum_duplicates <- parse_bool(opt$sum_duplicates, FALSE)
+clinical_columns <- parse_list(opt$clinical_columns)
+clinical_use_signature <- parse_bool(opt$clinical_use_signature, TRUE)
+clinical_use_genes <- parse_bool(opt$clinical_use_genes, FALSE)
 
 # Prepare output folders
 base_out <- opt$output_dir
@@ -147,8 +176,13 @@ heat_out <- if (nzchar(opt$heatmap_dir)) opt$heatmap_dir else file.path(base_out
 scatter_out <- if (nzchar(opt$scatter_dir)) opt$scatter_dir else file.path(base_out, "scatter")
 table_out <- if (nzchar(opt$tables_dir)) opt$tables_dir else file.path(base_out, "tables")
 meta_out <- file.path(base_out, "metadata")
+clinical_plot_dir <- if (length(clinical_columns) > 0) file.path(base_out, "clinical") else NULL
 
-lapply(c(base_out, bar_out, heat_out, scatter_out, table_out, meta_out), ensure_dir)
+dirs_to_create <- c(base_out, bar_out, heat_out, scatter_out, table_out, meta_out)
+if (!is.null(clinical_plot_dir)) {
+    dirs_to_create <- c(dirs_to_create, clinical_plot_dir)
+}
+lapply(unique(dirs_to_create), ensure_dir)
 
 # Load data
 counts <- read_table_auto(opt$counts)
@@ -160,7 +194,8 @@ sample_col <- resolve_column(colnames(meta), opt$sample_column)
 category_col <- resolve_column(colnames(meta), opt$category_column)
 
 # Load function
-source("/app/Multi_Gene_Correlations_to_Signature.R")
+core_script <- locate_core_script("Multi_Gene_Correlations_to_Signature.R")
+source(core_script)
 
 # Run
 res <- Multi_Gene_Correlations_to_Signature(
@@ -179,7 +214,10 @@ res <- Multi_Gene_Correlations_to_Signature(
     heatmap_width = as.numeric(opt$heatmap_width),
     add_text_to_heatmap = add_text_to_heatmap,
     rename_categories = rename_categories,
-    sum_duplicates = sum_duplicates
+    sum_duplicates = sum_duplicates,
+    clinical_columns = clinical_columns,
+    clinical_use_signature = clinical_use_signature,
+    clinical_use_genes = clinical_use_genes
 )
 
 # Save tables
@@ -242,6 +280,35 @@ if (!is.null(res$plots$scatter) && length(res$plots$scatter) > 0) {
     }
 }
 
+clinical_gene_table_path <- NULL
+clinical_signature_table_path <- NULL
+clinical_plot_paths <- character(0)
+if (!is.null(res$clinical_results)) {
+    clin <- res$clinical_results
+    if (!is.null(clin$gene_correlations) && nrow(clin$gene_correlations) > 0) {
+        clinical_gene_table_path <- file.path(table_out, "clinical_gene_correlations.csv")
+        utils::write.csv(clin$gene_correlations, clinical_gene_table_path, row.names = FALSE)
+    }
+    if (!is.null(clin$signature_correlations) && nrow(clin$signature_correlations) > 0) {
+        clinical_signature_table_path <- file.path(table_out, "clinical_signature_correlations.csv")
+        utils::write.csv(clin$signature_correlations, clinical_signature_table_path, row.names = FALSE)
+    }
+    if (!is.null(clin$plots) && length(clin$plots) > 0) {
+        if (is.null(clinical_plot_dir)) {
+            clinical_plot_dir <- file.path(base_out, "clinical")
+            ensure_dir(clinical_plot_dir)
+        }
+        for (nm in names(clin$plots)) {
+            plt <- clin$plots[[nm]]
+            if (inherits(plt, "ggplot")) {
+                fn <- file.path(clinical_plot_dir, paste0("clinical_", safe_name(nm), ".png"))
+                ggplot2::ggsave(fn, plt, width = 8, height = 6, dpi = 150)
+                clinical_plot_paths <- c(clinical_plot_paths, fn)
+            }
+        }
+    }
+}
+
 cat("\nCompleted. Outputs:\n")
 cat(paste0("  Tables: ", pathways_path, "\n"))
 if (requireNamespace("jsonlite", quietly = TRUE)) {
@@ -252,3 +319,13 @@ if (requireNamespace("jsonlite", quietly = TRUE)) {
 cat(paste0("  Barplots: ", bar_out, "\n"))
 cat(paste0("  Heatmap: ", heat_out, "\n"))
 cat(paste0("  Scatter: ", scatter_out, "\n\n"))
+if (!is.null(clinical_gene_table_path)) {
+    cat(paste0("  Clinical gene correlations: ", clinical_gene_table_path, "\n"))
+}
+if (!is.null(clinical_signature_table_path)) {
+    cat(paste0("  Clinical signature correlations: ", clinical_signature_table_path, "\n"))
+}
+if (length(clinical_plot_paths) > 0 && !is.null(clinical_plot_dir)) {
+    cat(paste0("  Clinical plots: ", clinical_plot_dir, "\n"))
+}
+cat("\n")

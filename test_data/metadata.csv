@@ -1,0 +1,7 @@
+SampleID,Tissue,Stage,PSA
+SampleA,Normal,Stage1,2.1
+SampleB,Normal,Stage1,2.8
+SampleC,Tumor,Stage2,5.6
+SampleD,Tumor,Stage2,6.0
+SampleE,Tumor,Stage3,7.2
+SampleF,Normal,Stage3,3.0

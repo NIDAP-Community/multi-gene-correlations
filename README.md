@@ -22,6 +22,7 @@ These screenshots use metadata values `TP` and `NT`; match your own metadata val
 - Automated gene symbol updates via L2P
 - Flexible input formats (CSV/TSV auto-detection)
 - Comprehensive outputs: tables, bar plots, heatmap, scatter plots
+- Optional clinical correlation module to relate gene/signature scores to numeric or categorical metadata
 - Command-line interface for batch processing
 - Available as a Docker/OCI image (GHCR). Singularity/Apptainer is supported by pulling the Docker image (singularity pull … docker://…) to produce a .sif.
 
@@ -107,6 +108,21 @@ singularity run \
 | `--add_text_to_heatmap` | `true` | Print correlation values in heatmap cells. |
 | `--rename_categories` | (none) | Comma-separated display labels for categories (in order). |
 | `--sum_duplicates` | `false` | Sum duplicate gene rows instead of selecting maximum. |
+| `--clinical_columns` | (none) | Comma-separated metadata columns to correlate against; accepts CSV file paths. |
+| `--clinical_use_signature` | `true` | Correlate the computed signature score against the requested clinical columns. |
+| `--clinical_use_genes` | `false` | Correlate each gene in `--genes` with the requested clinical columns (may generate large tables). |
+ 
+### Clinical correlations
+
+Enable clinical associations by pointing `--clinical_columns` to one or more metadata columns:
+
+```
+--clinical_columns "Stage,PSA" --clinical_use_signature true --clinical_use_genes true
+```
+
+- Numeric columns use Pearson correlations (signature vs measurement and per-gene vs measurement).
+- Categorical columns are expanded into one-hot indicators per level (point-biserial correlations). Signature-level box/scatter plots are saved under `output/clinical/`.
+- Results are written to `tables/clinical_signature_correlations.csv` (signature) and `tables/clinical_gene_correlations.csv` (genes, optional).
 
 ## Input File Formats
 
@@ -136,7 +152,9 @@ The tool generates the following outputs:
 ```
 output/
 ├── tables/
-│   └── pathways.csv          # Correlation coefficients, p-values, confidence intervals
+│   ├── pathways.csv                      # Gene vs signature correlations
+│   ├── clinical_signature_correlations.csv   # Signature vs clinical metadata (optional)
+│   └── clinical_gene_correlations.csv        # Gene panel vs clinical metadata (optional)
 ├── metadata/
 │   └── run_parameters.json   # Run configuration and gene mapping details
 ├── barplots/
@@ -145,10 +163,13 @@ output/
 │   └── barplot_all.png
 ├── heatmap/
 │   └── heatmap.png           # Combined correlation heatmap
-└── scatter/
-    ├── scatter_Category1.png # Signature vs gene expression scatter plots
-    ├── scatter_Category2.png
-    └── scatter_all.png
+├── scatter/
+│   ├── scatter_Category1.png # Signature vs gene expression scatter plots
+│   ├── scatter_Category2.png
+│   └── scatter_all.png
+└── clinical/ (optional)
+  ├── clinical_scatter_PSA.png    # Signature vs numeric clinical variable
+  └── clinical_box_Stage.png      # Signature vs categorical clinical variable
 ```
 
 ## Gene List Files
