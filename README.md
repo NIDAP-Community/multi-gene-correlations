@@ -121,7 +121,7 @@ Enable clinical associations by pointing `--clinical_columns` to one or more met
 ```
 
 - Numeric columns use Pearson correlations (signature vs measurement and per-gene vs measurement).
-- Categorical columns are expanded into one-hot indicators per level (point-biserial correlations). Signature-level box/scatter plots are saved under `output/clinical/`.
+- Categorical columns are expanded into one-hot indicators per level (point-biserial correlations). Signature-level box/scatter plots plus bar plots summarizing signature/gene correlations are saved under `output/clinical/`.
 - Results are written to `tables/clinical_signature_correlations.csv` (signature) and `tables/clinical_gene_correlations.csv` (genes, optional).
 
 ## Input File Formats
@@ -168,8 +168,10 @@ output/
 │   ├── scatter_Category2.png
 │   └── scatter_all.png
 └── clinical/ (optional)
-  ├── clinical_scatter_PSA.png    # Signature vs numeric clinical variable
-  └── clinical_box_Stage.png      # Signature vs categorical clinical variable
+  ├── clinical_scatter_PSA.png           # Signature vs numeric clinical variable
+  ├── clinical_box_Stage.png             # Signature vs categorical clinical variable
+  ├── clinical_bar_signature_vs_clinical.png  # Bar plot of signature vs all clinical targets
+  └── clinical_bar_genes_vs_Stage_Stage1.png   # Gene panel correlations per clinical target (one file per target)
 ```
 
 ## Gene List Files

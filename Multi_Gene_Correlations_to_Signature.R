@@ -72,6 +72,7 @@ Multi_Gene_Correlations_to_Signature <- function(
         library(ComplexHeatmap)
         library(circlize)
         library(RColorBrewer)
+        library(purrr)
         library(grid)
     })
 
@@ -492,6 +493,102 @@ Multi_Gene_Correlations_to_Signature <- function(
             return(NULL)
         }
 
+        significance_annotation <- function(pvalues) {
+            dplyr::case_when(
+                is.na(pvalues) ~ "",
+                pvalues < 0.001 ~ "***",
+                pvalues < 0.01 ~ "**",
+                pvalues < 0.05 ~ "*",
+                TRUE ~ ""
+            )
+        }
+
+        add_barplot_scaling <- function(df) {
+            max_abs <- max(abs(df$corr), na.rm = TRUE)
+            if (!is.finite(max_abs) || max_abs == 0) {
+                max_abs <- 1
+            }
+            rounding_step <- max(0.1, signif(max_abs / 5, 1))
+            max_abs <- ceiling(max_abs / rounding_step) * rounding_step
+            list(max_abs = max_abs, mid = max_abs / 2)
+        }
+
+        build_signature_barplot <- function(df) {
+            if (is.null(df) || nrow(df) == 0) {
+                return(NULL)
+            }
+            scaling <- add_barplot_scaling(df)
+            df <- df %>%
+                mutate(
+                    clinical_target = stringr::str_wrap(clinical_target, width = 24),
+                    label = significance_annotation(p_value),
+                    text_hjust = ifelse(corr >= 0, -0.3, 1.3),
+                    clinical_target = reorder(clinical_target, corr, na.rm = TRUE)
+                )
+            ggplot(df, aes(x = clinical_target, y = corr, fill = corr)) +
+                geom_col() +
+                coord_flip() +
+                theme_bw() +
+                geom_text(aes(label = label, hjust = text_hjust), color = "black") +
+                scale_fill_gradientn(
+                    colors = rev(rd_bu_colors),
+                    limits = c(-scaling$max_abs, scaling$max_abs),
+                    breaks = c(-scaling$max_abs, -scaling$mid, 0, scaling$mid, scaling$max_abs),
+                    labels = sprintf("%.2f", c(-scaling$max_abs, -scaling$mid, 0, scaling$mid, scaling$max_abs)),
+                    na.value = "grey85"
+                ) +
+                scale_y_continuous(limits = c(-1, 1)) +
+                labs(
+                    title = "Signature vs Clinical Parameters",
+                    x = "Clinical Parameter",
+                    y = "Correlation"
+                ) +
+                theme(
+                    plot.title = element_text(hjust = 0.5, size = 14),
+                    axis.text.y = element_text(size = 11),
+                    axis.text.x = element_text(size = 11)
+                )
+        }
+
+        build_gene_barplots <- function(df) {
+            if (is.null(df) || nrow(df) == 0) {
+                return(list())
+            }
+            split(df, df$clinical_target) %>%
+                purrr::imap(function(target_df, target_name) {
+                    scaling <- add_barplot_scaling(target_df)
+                    plot_df <- target_df %>%
+                        mutate(
+                            label = significance_annotation(p_value),
+                            gene = reorder(gene, corr, na.rm = TRUE),
+                            text_hjust = ifelse(corr >= 0, -0.3, 1.3)
+                        )
+                    ggplot(plot_df, aes(x = gene, y = corr, fill = corr)) +
+                        geom_col() +
+                        coord_flip() +
+                        theme_bw() +
+                        geom_text(aes(label = label, hjust = text_hjust), color = "black") +
+                        scale_fill_gradientn(
+                            colors = rev(rd_bu_colors),
+                            limits = c(-scaling$max_abs, scaling$max_abs),
+                            breaks = c(-scaling$max_abs, -scaling$mid, 0, scaling$mid, scaling$max_abs),
+                            labels = sprintf("%.2f", c(-scaling$max_abs, -scaling$mid, 0, scaling$mid, scaling$max_abs)),
+                            na.value = "grey85"
+                        ) +
+                        scale_y_continuous(limits = c(-1, 1)) +
+                        labs(
+                            title = sprintf("Genes vs %s", target_name),
+                            x = "Gene",
+                            y = "Correlation"
+                        ) +
+                        theme(
+                            plot.title = element_text(hjust = 0.5, size = 14),
+                            axis.text.y = element_text(size = 11),
+                            axis.text.x = element_text(size = 11)
+                        )
+                })
+        }
+
         meta_ready <- metadata %>%
             filter(.data[[sample_column]] %in% colnames(expression_matrix)) %>%
             distinct(.data[[sample_column]], .keep_all = TRUE)
@@ -619,9 +716,23 @@ Multi_Gene_Correlations_to_Signature <- function(
 
         gene_df <- if (length(gene_rows) > 0) dplyr::bind_rows(gene_rows) else NULL
         signature_df <- if (length(signature_rows) > 0) dplyr::bind_rows(signature_rows) else NULL
+        if (!is.null(signature_df) && nrow(signature_df) > 0) {
+            signature_df$p_adj <- stats::p.adjust(signature_df$p_value, method = "BH")
+        }
 
         if (is.null(gene_df) && is.null(signature_df) && length(plot_list) == 0) {
             return(NULL)
+        }
+
+        signature_barplot <- build_signature_barplot(signature_df)
+        if (!is.null(signature_barplot)) {
+            plot_list[["bar_signature_vs_clinical"]] <- signature_barplot
+        }
+        gene_barplots <- build_gene_barplots(gene_df)
+        if (length(gene_barplots) > 0) {
+            for (nm in names(gene_barplots)) {
+                plot_list[[paste0("bar_genes_vs_", nm)]] <- gene_barplots[[nm]]
+            }
         }
 
         list(
