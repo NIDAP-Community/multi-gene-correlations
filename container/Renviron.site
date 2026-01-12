@@ -1,0 +1,2 @@
+# Custom Renviron to keep user libraries accessible in Singularity/Apptainer runs
+R_LIBS_USER=/usr/local/lib/R/site-library

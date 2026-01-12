@@ -18,7 +18,7 @@ These screenshots use metadata values `TP` and `NT`; match your own metadata val
 ## Features
 
 - Correlate gene expression against a signature score
-- Per-category correlation analysis with statistical testing (FDR correction)
+- Per-category correlation analysis with statistical testing (FDR correction) and scatter facets annotated with Pearson r/p values
 - Automated gene symbol updates via L2P
 - Flexible input formats (CSV/TSV auto-detection)
 - Comprehensive outputs: tables, bar plots, heatmap, scatter plots
@@ -121,8 +121,41 @@ Enable clinical associations by pointing `--clinical_columns` to one or more met
 ```
 
 - Numeric columns use Pearson correlations (signature vs measurement and per-gene vs measurement).
-- Categorical columns are expanded into one-hot indicators per level (point-biserial correlations). Signature-level box/scatter plots plus bar plots summarizing signature/gene correlations are saved under `output/clinical/`.
+- Categorical columns are expanded into one-hot indicators per level (point-biserial correlations). Signature-level box plots + bar plots, as well as **gene vs numeric clinical scatter plots with Pearson r and p annotations**, are saved under `output/clinical/`.
 - Results are written to `tables/clinical_signature_correlations.csv` (signature) and `tables/clinical_gene_correlations.csv` (genes, optional).
+
+## Bind mount layout
+
+The container follows the Container-as-a-Function model and expects explicit bind mounts:
+
+- `/data`: read-only directory containing counts, metadata, and optional gene lists.
+- `/output`: writable directory where the pipeline writes `tables/`, `barplots/`, `scatter/`, `heatmap/`, and `clinical/` artifacts.
+
+Always map host paths into those locations. The helper script below enforces the layout automatically.
+
+### Singularity helper script
+
+Use [container/run_clinical_plots.sh](container/run_clinical_plots.sh) to standardize Singularity invocations:
+
+```bash
+DATA_DIR=$PWD/test_data \
+OUTPUT_DIR=$PWD/test_output \
+container/run_clinical_plots.sh \
+  ~/images/multi-gene-correlations.sif \
+  --counts /data/counts.tsv \
+  --metadata /data/metadata.csv \
+  --gene_column Gene \
+  --sample_column SampleID \
+  --genes "GATM,GAMT,CKM,SLC6A8" \
+  --category_column Tissue \
+  --categories "Normal,Tumor" \
+  --signature_name Creatine \
+  --signature_genes "PTEN,SPRY2" \
+  --clinical_columns "Stage,PSA" \
+  --output_dir /output
+```
+
+`DATA_DIR`, `OUTPUT_DIR`, and optional `EXTRA_BINDS` environment variables control the mounts. The script also propagates `R_LIBS_USER=/usr/local/lib/R/site-library` so Singularity runs resolve pre-installed R packages even when `HOME` is remapped.
 
 ## Input File Formats
 
@@ -164,11 +197,13 @@ output/
 ├── heatmap/
 │   └── heatmap.png           # Combined correlation heatmap
 ├── scatter/
-│   ├── scatter_Category1.png # Signature vs gene expression scatter plots
+│   ├── scatter_Category1.png # Signature vs gene expression with r/p annotations per facet
 │   ├── scatter_Category2.png
 │   └── scatter_all.png
 └── clinical/ (optional)
   ├── clinical_scatter_PSA.png           # Signature vs numeric clinical variable
+  ├── clinical_scatter_signature_vs_PSA.png # Signature-specific scatter (numeric clinical)
+  ├── clinical_scatter_genes_vs_PSA.png      # Gene expression vs numeric clinical with r/p labels
   ├── clinical_box_Stage.png             # Signature vs categorical clinical variable
   ├── clinical_bar_signature_vs_clinical.png  # Bar plot of signature vs all clinical targets
   └── clinical_bar_genes_vs_Stage_Stage1.png   # Gene panel correlations per clinical target (one file per target)

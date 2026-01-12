@@ -326,6 +326,17 @@ Multi_Gene_Correlations_to_Signature <- function(
         )
         expression_wide <- as.data.frame(t(filtcounts), stringsAsFactors = FALSE)
         expression_wide$sample <- rownames(expression_wide)
+        label_df <- corr_table %>%
+            mutate(
+                gene_label = dplyr::case_when(
+                    is.na(.data$corr) ~ as.character(.data$gene),
+                    is.na(.data$p_value) ~ sprintf("%s (r=%.2f)", as.character(.data$gene), .data$corr),
+                    TRUE ~ sprintf("%s (r=%.2f, p=%.2g)", as.character(.data$gene), .data$corr, .data$p_value)
+                ),
+                gene_chr = as.character(.data$gene)
+            ) %>%
+            select(gene_chr, gene_label)
+
         scatter_df <- expression_wide %>%
             tidyr::pivot_longer(
                 cols = -sample,
@@ -336,7 +347,11 @@ Multi_Gene_Correlations_to_Signature <- function(
             mutate(
                 category = category_label
             ) %>%
-            filter(!is.na(.data$expression), !is.na(.data$signature))
+            filter(!is.na(.data$expression), !is.na(.data$signature)) %>%
+            mutate(gene_chr = as.character(.data$gene)) %>%
+            left_join(label_df, by = "gene_chr") %>%
+            mutate(gene_label = ifelse(is.na(.data$gene_label), as.character(.data$gene), .data$gene_label)) %>%
+            select(-gene_chr)
 
         title_text <- sprintf(
             "Correlation to %s in %s (n=%d)",
@@ -478,6 +493,50 @@ Multi_Gene_Correlations_to_Signature <- function(
             n = n_ok,
             stringsAsFactors = FALSE
         )
+    }
+
+    build_gene_numeric_scatter <- function(expr_matrix, numeric_vec, target_label, corr_df) {
+        if (is.null(expr_matrix) || nrow(expr_matrix) == 0) {
+            return(NULL)
+        }
+        if (is.null(corr_df) || nrow(corr_df) == 0) {
+            return(NULL)
+        }
+        long_df <- as.data.frame(t(expr_matrix), stringsAsFactors = FALSE)
+        long_df$sample <- rownames(long_df)
+        tidy_df <- long_df %>%
+            tidyr::pivot_longer(
+                cols = -sample,
+                names_to = "gene",
+                values_to = "expression"
+            ) %>%
+            mutate(clinical_value = numeric_vec[match(sample, colnames(expr_matrix))]) %>%
+            filter(!is.na(clinical_value), !is.na(expression))
+        if (nrow(tidy_df) == 0) {
+            return(NULL)
+        }
+        label_df <- corr_df %>%
+            dplyr::select(gene, corr, p_value) %>%
+            mutate(
+                gene_label = dplyr::case_when(
+                    is.na(corr) ~ gene,
+                    is.na(p_value) ~ sprintf("%s (r=%.2f)", gene, corr),
+                    TRUE ~ sprintf("%s (r=%.2f, p=%.2g)", gene, corr, p_value)
+                )
+            )
+        tidy_df <- tidy_df %>%
+            left_join(label_df, by = "gene") %>%
+            mutate(gene_label = ifelse(is.na(gene_label), gene, gene_label))
+        ggplot(tidy_df, aes(x = clinical_value, y = expression)) +
+            geom_point(alpha = 0.7, color = "#336699") +
+            geom_smooth(method = "lm", se = FALSE, color = "#FF8C00") +
+            facet_wrap(~gene_label, scales = "free_y") +
+            theme_bw() +
+            labs(
+                title = sprintf("Genes vs %s", target_label),
+                x = sprintf("%s (clinical)", target_label),
+                y = "Gene Expression"
+            )
     }
 
     compute_clinical_correlations <- function(
@@ -633,18 +692,27 @@ Multi_Gene_Correlations_to_Signature <- function(
                     next
                 }
                 if (use_genes) {
-                    gene_rows[[clinical_col]] <- correlate_rows_with_vector(
+                    numeric_gene_corr <- correlate_rows_with_vector(
                         expression_aligned[, ok, drop = FALSE],
                         numeric_vec[ok],
                         clinical_col,
                         "numeric"
                     )
+                    gene_rows[[clinical_col]] <- numeric_gene_corr
+                    if (!is.null(numeric_gene_corr) && nrow(numeric_gene_corr) > 0) {
+                        plot_list[[paste0("scatter_genes_vs_", clinical_col)]] <- build_gene_numeric_scatter(
+                            expression_aligned[, ok, drop = FALSE],
+                            numeric_vec[ok],
+                            clinical_col,
+                            numeric_gene_corr
+                        )
+                    }
                 }
                 if (use_signature) {
                     sig_row <- correlate_signature_with_vector(signature_aligned[ok], numeric_vec[ok], clinical_col, "numeric")
                     if (!is.null(sig_row)) {
                         signature_rows[[clinical_col]] <- sig_row
-                        plot_list[[paste0("scatter_", clinical_col)]] <- ggplot(
+                        plot_list[[paste0("scatter_signature_vs_", clinical_col)]] <- ggplot(
                             data.frame(
                                 clinical_value = numeric_vec[ok],
                                 signature = signature_aligned[ok]
@@ -848,7 +916,7 @@ Multi_Gene_Correlations_to_Signature <- function(
         ggplot(scatter_df, aes(x = signature, y = expression)) +
             geom_point(alpha = 0.6, size = 1.5, color = "#336699") +
             geom_smooth(method = "lm", se = FALSE, color = "#FF8C00") +
-            facet_wrap(~gene, scales = "free") +
+            facet_wrap(~gene_label, scales = "free") +
             theme_bw() +
             labs(
                 title = sprintf("%s vs Gene Expression in %s", full_signature_title, name),

@@ -25,6 +25,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+RUN mkdir -p /usr/local/lib/R/site-library
+
 # Install key R packages via apt to ensure availability at runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
     r-cran-jsonlite \
@@ -40,6 +42,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install CRAN packages using littler's install2.r (more robust)
 # Install CRAN packages from a vanilla mirror (complements apt-installed packages)
 RUN R -q -e "options(repos=c(CRAN='https://cran.r-project.org')); install.packages(c('GetoptLong','GlobalOptions'))"
+
+# Pre-install tidyverse-related runtime dependencies to avoid first-run downloads
+RUN R -q -e "options(repos=c(CRAN='https://cran.r-project.org')); install.packages(c('readr','forcats','vroom','hms','tzdb','bit','bit64','progress','prettyunits','cpp11'), dependencies=TRUE)"
 
 # Install Bioconductor ComplexHeatmap via BiocManager, with R-universe fallback (already apt-installed)
 RUN R -q -e "options(repos=c(CRAN='https://cran.r-project.org')); install.packages('BiocManager'); tryCatch(BiocManager::install('ComplexHeatmap', update=FALSE, ask=FALSE), error=function(e) install.packages('ComplexHeatmap', repos=c('https://jokergoo.r-universe.dev','https://cran.r-project.org')))"
@@ -59,10 +64,18 @@ COPY Multi_Gene_Correlations_to_Signature.R /app/
 COPY entrypoint.R /app/
 COPY container/Dockerfile /app/Dockerfile
 COPY README.md /app/
+COPY scripts/generate_clinical_correlation_plots.R /app/scripts/generate_clinical_correlation_plots.R
+COPY test_data /app/test_data
+RUN chmod +x /app/scripts/generate_clinical_correlation_plots.R
+COPY container/Renviron.site /usr/lib/R/etc/Renviron.site
 
 # Ensure R can see apt-installed libraries at runtime
-ENV R_LIBS_SITE="/usr/lib/R/site-library:/usr/lib/R/library"
+ENV R_LIBS_SITE="/usr/lib/R/site-library:/usr/lib/R/library" \
+    R_LIBS_USER="/usr/local/lib/R/site-library"
 RUN echo "R_LIBS_SITE=/usr/lib/R/site-library:/usr/lib/R/library" >> /usr/local/lib/R/etc/Renviron
+
+# Smoke test to verify dependencies are installed
+RUN Rscript /app/scripts/generate_clinical_correlation_plots.R
 
 # Default entrypoint runs the R CLI. For debugging, override with --entrypoint bash
 ENTRYPOINT ["Rscript", "/app/entrypoint.R"]

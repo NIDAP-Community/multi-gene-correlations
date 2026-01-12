@@ -63,6 +63,11 @@ singularity pull multi-gene-correlations.sif docker://ghcr.io/<org>/<tool>:<tag>
 
 docker build -t <org>/<tool>:dev -f container/Dockerfile .
 
+During the build the Dockerfile preinstalls the tidyverse runtime stack
+(`readr`, `forcats`, `vroom`, `hms`, `tzdb`, `bit`, `bit64`, `progress`,
+`prettyunits`, `cpp11`, etc.), copies the synthetic data under `test_data/`,
+and runs [`scripts/generate_clinical_correlation_plots.R`](../scripts/generate_clinical_correlation_plots.R)
+as a smoke test to ensure all dependencies are satisfied before publishing.
 
 Publish/tag according to project release conventions (e.g., GHCR).
 
@@ -126,6 +131,20 @@ singularity run
 
 
 (Exact flags depend on the entrypoint’s CLI; consult the top-level README for tool usage.)
+
+### Helper wrapper for Singularity
+
+[run_clinical_plots.sh](run_clinical_plots.sh) standardizes Singularity invocations by
+binding the host data/output directories to `/data` and `/output`, setting
+`R_LIBS_USER=/usr/local/lib/R/site-library`, and preserving CAF semantics. Example:
+
+```
+DATA_DIR=$PWD/test_data OUTPUT_DIR=$PWD/test_output \
+container/run_clinical_plots.sh <tool>.sif --counts /data/counts.tsv ...
+```
+
+Customize the `DATA_DIR`, `OUTPUT_DIR`, and `EXTRA_BINDS` environment variables to
+match the host filesystem layout.
 
 
 
