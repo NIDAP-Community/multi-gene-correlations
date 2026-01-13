@@ -304,6 +304,21 @@ singularity run \
   --output_dir /output
 ```
 
+## Local R Workflow (renv)
+
+If you prefer to run the analysis scripts directly on your workstation (outside Docker/Singularity), a pinned `renv.lock` is now provided.
+
+1. Install `renv` once: `Rscript -e "install.packages('renv', repos='https://cran.r-project.org')"`
+2. Restore the project library: `Rscript -e "renv::restore(prompt = FALSE)"`
+3. For each interactive R session, run `source('renv/activate.R')` from the repo root to place the renv library first in `.libPaths()`.
+4. Invoke `Rscript entrypoint.R ...` (same arguments shown above) or call `Multi_Gene_Correlations_to_Signature()` directly after `source('renv/activate.R'); source('Multi_Gene_Correlations_to_Signature.R')`.
+
+Notes:
+- The repo does **not** auto-activate renv to avoid interfering with container runs; always source `renv/activate.R` explicitly when working locally.
+- `renv.lock` targets R 4.5.x; use the closest release you have available (matching the container whenever possible).
+- After changing R package dependencies, run `renv::snapshot()` so the lockfile stays in sync.
+- You can mirror the container smoke test locally via `Rscript entrypoint.R --counts test_data/counts.tsv ... --output_dir test_output/local_smoke` once renv is restored.
+
 ## Building from Source
 
 ### Clone Repository

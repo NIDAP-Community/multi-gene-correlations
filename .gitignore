@@ -30,3 +30,7 @@ QUICK_START.md
 
 # Git files
 .github/
+
+# renv artifacts
+renv/library/
+renv/staging/

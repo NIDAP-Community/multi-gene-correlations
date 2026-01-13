@@ -178,6 +178,7 @@ At the start of a coding session (or before major work), Copilot should:
 
 ## 14) Do not push to GitHub autonomously
 Copilot must never push commits to GitHub autonomously.
+Never run `git push` (or any equivalent) unless the user has explicitly granted push approval during the current conversation.
 At the end of a working session, Copilot should explicitly ask the user to:
 - `git status`
 - commit with a meaningful message
