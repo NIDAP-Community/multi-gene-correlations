@@ -308,10 +308,11 @@ singularity run \
 
 If you prefer to run the analysis scripts directly on your workstation (outside Docker/Singularity), a pinned `renv.lock` is now provided.
 
-1. Install `renv` once: `Rscript -e "install.packages('renv', repos='https://cran.r-project.org')"`
-2. Restore the project library: `Rscript -e "renv::restore(prompt = FALSE)"`
-3. For each interactive R session, run `source('renv/activate.R')` from the repo root to place the renv library first in `.libPaths()`.
-4. Invoke `Rscript entrypoint.R ...` (same arguments shown above) or call `Multi_Gene_Correlations_to_Signature()` directly after `source('renv/activate.R'); source('Multi_Gene_Correlations_to_Signature.R')`.
+1. Download the repo contents (either `git clone https://github.com/NIDAP-Community/multi-gene-correlations.git` or grab the source zip/tarball from the [GitHub Releases](https://github.com/NIDAP-Community/multi-gene-correlations/releases) page). This provides `entrypoint.R`, `Multi_Gene_Correlations_to_Signature.R`, and the small `test_data/` bundle for smoke testing.
+2. Install `renv` once: `Rscript -e "install.packages('renv', repos='https://cran.r-project.org')"`
+3. Restore the project library: `Rscript -e "renv::restore(prompt = FALSE)"`
+4. For each interactive R session, run `source('renv/activate.R')` from the repo root to place the renv library first in `.libPaths()`.
+5. Invoke `Rscript entrypoint.R ...` (same arguments shown above) or call `Multi_Gene_Correlations_to_Signature()` directly after `source('renv/activate.R'); source('Multi_Gene_Correlations_to_Signature.R')`.
 
 Notes:
 - The repo does **not** auto-activate renv to avoid interfering with container runs; always source `renv/activate.R` explicitly when working locally.

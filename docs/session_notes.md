@@ -30,4 +30,5 @@
 - Ran `Rscript entrypoint.R` against `test_data/` with full clinical flags to smoke-test the pipeline post-release, writing outputs to `test_output/smoke_20260113_123311/`.
 - Re-ran the same synthetic workflow via `docker run ghcr.io/nidap-community/multi-gene-correlations:latest` (linux/amd64) to validate container parity; outputs landed in `test_output/docker_smoke_20260113_123515/` despite the Apple Silicon platform warning.
 - Initialized a local `renv` environment (no auto-activation), captured `renv.lock` with the container's dependency set, and documented the restore workflow in README for users who want to run the scripts directly in R.
+- Clarified the README instructions so interactive R users know to clone/download the repo (includes `test_data/`) before restoring `renv` and sourcing the scripts.
 
