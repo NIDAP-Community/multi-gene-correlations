@@ -28,4 +28,5 @@
 - Rebuilt the linux/amd64 container image and pushed it to GHCR as both `latest` and `v1.0.1` so the published runtime matches today's changes.
 - Published the GitHub Release for `v1.0.1` via `gh release create` using `docs/releases/v1.0.1.md` for the body and confirmed no additional automation references to the new docs/releases convention were required.
 - Ran `Rscript entrypoint.R` against `test_data/` with full clinical flags to smoke-test the pipeline post-release, writing outputs to `test_output/smoke_20260113_123311/`.
+- Re-ran the same synthetic workflow via `docker run ghcr.io/nidap-community/multi-gene-correlations:latest` (linux/amd64) to validate container parity; outputs landed in `test_output/docker_smoke_20260113_123515/` despite the Apple Silicon platform warning.
 
