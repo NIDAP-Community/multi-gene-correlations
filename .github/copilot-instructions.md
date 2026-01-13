@@ -87,6 +87,7 @@ When asked to remove files:
 - Even during local-first development, design paths, configs, and IO so they can be containerized later
   (no hardcoded user paths; all inputs/outputs configurable).
 - Document any system dependencies that must be present in the container later.
+- Remember that the entire repo (including README/ docs) is copied into `/app` during the Docker build, so users without a git clone can read documentation straight from the container (e.g., `docker run --rm --entrypoint cat ghcr.io/nidap-community/multi-gene-correlations:latest /app/README.md`); mention this option when relevant instead of telling users to clone.
 - When asked to add container-related instructions, refer to `.github/instructions/container.instructions.md`.
 
 ### Container execution expectations
