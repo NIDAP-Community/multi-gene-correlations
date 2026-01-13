@@ -5,6 +5,7 @@ All notable changes to this project will be documented in this file.
 ## Unreleased
 - Initial repository scaffolding and documentation standards.
 - Move Dockerfile to container/ and add container README; update build instructions to point to new path.
+- Added a pinned `renv.lock` plus documentation so the pipeline can be restored and run directly in local R sessions (manual `renv` activation, synthetic smoke test instructions).
 
 ## 2026-01-12
 - Added optional clinical correlation workflow (numeric + categorical metadata) with new CLI flags and outputs for signature/gene associations.

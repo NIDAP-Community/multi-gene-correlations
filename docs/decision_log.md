@@ -19,3 +19,8 @@
 **Decision:** `docs/session_notes.md` and `docs/decision_log.md` are committed and append-only. Session notes updated at least 1x/day during active work.
 **Rationale:** Preserve context and prevent reintroducing rejected approaches.
 **Consequences:** Major changes consult the decision log; sessions end with a notes update + commit/push prompt.
+
+## 2026-01-13 — Local `renv` workflow support
+**Decision:** Track a pinned `renv.lock` plus activation scripts, but keep auto-activation disabled; developers must explicitly run `renv::restore()` once and `source('renv/activate.R')` per session before executing `entrypoint.R` or sourcing the core functions locally.
+**Rationale:** Enable interactive R usage without diverging from the container dependency stack while avoiding surprises for container-focused users.
+**Consequences:** README documents the restore steps, and any dependency changes must be captured via `renv::snapshot()` so local runs stay reproducible.
