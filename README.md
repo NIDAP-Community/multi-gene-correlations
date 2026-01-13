@@ -53,7 +53,7 @@ docker run --rm \
   --sample_column SampleID \
   --genes "GATM,GAMT,CKM,SLC6A8" \
   --category_column Tissue \
-  --categories "Normal,Tumor" \
+  --categories "Normal,Tumor,all" \
   --signature_name "MySignature" \
   --signature_genes "PTEN,SPRY2,CKM" \
   --output_dir /output
@@ -72,7 +72,7 @@ singularity run \
   --sample_column SampleID \
   --genes "GATM,GAMT,CKM,SLC6A8" \
   --category_column Tissue \
-  --categories "Normal,Tumor" \
+  --categories "Normal,Tumor,all" \
   --signature_name "MySignature" \
   --signature_genes "PTEN,SPRY2,CKM" \
   --output_dir /output
@@ -88,7 +88,7 @@ singularity run \
 | `--sample_column` | Column name in metadata containing sample identifiers. |
 | `--genes` | Comma-separated list of genes to correlate (or path to file with one gene per line). |
 | `--category_column` | Column name in metadata defining sample categories. |
-| `--categories` | Comma-separated list of category values to analyze. |
+| `--categories` | Comma-separated list of category values to analyze; include the literal lowercase `all` when you want aggregate plots/tables spanning every requested category. |
 | `--signature_genes` | Comma-separated list of genes defining the signature score (averaged). |
 
 ## Optional Parameters
@@ -111,6 +111,7 @@ singularity run \
 | `--clinical_columns` | (none) | Comma-separated metadata columns to correlate against; accepts CSV file paths. |
 | `--clinical_use_signature` | `true` | Correlate the computed signature score against the requested clinical columns. |
 | `--clinical_use_genes` | `false` | Correlate each gene in `--genes` with the requested clinical columns (may generate large tables). |
+| `--clinical_box_colors` | (auto) | Comma-separated color codes (hex or names) for categorical clinical box plots; defaults to 20 distinct colors. |
  
 ### Clinical correlations
 
@@ -122,6 +123,9 @@ Enable clinical associations by pointing `--clinical_columns` to one or more met
 
 - Numeric columns use Pearson correlations (signature vs measurement and per-gene vs measurement).
 - Categorical columns are expanded into one-hot indicators per level (point-biserial correlations). Signature-level box plots + bar plots, as well as **gene vs numeric clinical scatter plots with Pearson r and p annotations**, are saved under `output/clinical/`.
+- Customize categorical box-plot colors via `--clinical_box_colors`. Provide at least as many colors as levels (hex like `#1f77b4` or names); otherwise a default palette of 20 distinct colors is used.
+- Signature vs categorical clinical box plots annotate each level with the exact Pearson r and p values derived from the indicator correlations so reviewers can match the boxes to the tables.
+- Numeric clinical scatter plots annotate each gene facet and the signature plot with the exact Pearson r and p values to mirror the table outputs.
 - Results are written to `tables/clinical_signature_correlations.csv` (signature) and `tables/clinical_gene_correlations.csv` (genes, optional).
 
 ## Bind mount layout
@@ -148,7 +152,7 @@ container/run_clinical_plots.sh \
   --sample_column SampleID \
   --genes "GATM,GAMT,CKM,SLC6A8" \
   --category_column Tissue \
-  --categories "Normal,Tumor" \
+  --categories "Normal,Tumor,all" \
   --signature_name Creatine \
   --signature_genes "PTEN,SPRY2" \
   --clinical_columns "Stage,PSA" \
@@ -191,15 +195,15 @@ output/
 ├── metadata/
 │   └── run_parameters.json   # Run configuration and gene mapping details
 ├── barplots/
-│   ├── barplot_Category1.png
-│   ├── barplot_Category2.png
-│   └── barplot_all.png
+|   ├── barplot_Category1.png
+|   ├── barplot_Category2.png
+|   └── barplot_all.png (if the literal lowercase `all` was included in --categories)
 ├── heatmap/
 │   └── heatmap.png           # Combined correlation heatmap
 ├── scatter/
-│   ├── scatter_Category1.png # Signature vs gene expression with r/p annotations per facet
-│   ├── scatter_Category2.png
-│   └── scatter_all.png
+|   ├── scatter_Category1.png # Signature vs gene expression with r/p annotations per facet
+|   ├── scatter_Category2.png
+|   └── scatter_all.png (if the literal lowercase `all` was included in --categories)
 └── clinical/ (optional)
   ├── clinical_scatter_PSA.png           # Signature vs numeric clinical variable
   ├── clinical_scatter_signature_vs_PSA.png # Signature-specific scatter (numeric clinical)
@@ -294,7 +298,7 @@ singularity run \
   --sample_column SampleID \
   --genes "GATM,GAMT,CKM,SLC6A8,AR,PTEN,SPRY2" \
   --category_column Condition \
-  --categories "Control,Treatment" \
+  --categories "Control,Treatment,all" \
   --signature_name "Creatine" \
   --signature_genes "PTEN,SPRY2,CKM" \
   --output_dir /output
@@ -345,6 +349,6 @@ https://github.com/NIDAP-Community/multi-gene-correlations/issues
 
 ## Version
 
-**Current Version:** 1.0.0  
+**Current Version:** 1.0.1  
 **Base Image:** rocker/r-ver:4.5.2  
 **Template Version:** 14

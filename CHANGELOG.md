@@ -15,3 +15,10 @@ All notable changes to this project will be documented in this file.
 - Added `container/run_clinical_plots.sh` helper plus README updates documenting the standard `/data` and `/output` binds for Singularity users.
 - Clinical numeric scatter plots now show **gene expression vs clinical measurements** (with Pearson r and p in facet labels) instead of signature-only scatters, matching the intended visualization requirements.
 - Per-category signature scatter plots now annotate each gene facet with the corresponding Pearson r/p so reviewers can tie the bar plots back to the underlying point clouds.
+
+## 2026-01-13 — v1.0.1
+- Added `--clinical_box_colors` flag so categorical clinical box plots can use user-provided palettes; default palette now provides 20 distinct colors for cohorts with many levels.
+- Clinical numeric scatter plots now overlay r/p text annotations (both per-gene facets and the signature scatter) for quick visual validation against the correlation tables.
+- Aggregate "all" category plots/tables are now opt-in: add the literal lowercase `all` to `--categories` to keep the combined view, or omit it to generate only the requested metadata categories.
+- Signature vs categorical clinical box plots now annotate each category level with the corresponding Pearson r and p values.
+- Rebuilt and pushed `ghcr.io/nidap-community/multi-gene-correlations:{latest,v1.0.1}` (digest `sha256:6975c121b6e5c2a7ca068fa4c708bdd555ea297453349af2135515dfabb09734`) so the container matches this release.

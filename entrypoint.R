@@ -144,7 +144,8 @@ opt <- modifyList(list(
     sum_duplicates = "false",
     clinical_columns = "",
     clinical_use_signature = "true",
-    clinical_use_genes = "false"
+    clinical_use_genes = "false",
+    clinical_box_colors = ""
 ), parse_kv_args())
 
 # Validate required inputs
@@ -168,6 +169,7 @@ sum_duplicates <- parse_bool(opt$sum_duplicates, FALSE)
 clinical_columns <- parse_list(opt$clinical_columns)
 clinical_use_signature <- parse_bool(opt$clinical_use_signature, TRUE)
 clinical_use_genes <- parse_bool(opt$clinical_use_genes, FALSE)
+clinical_box_colors <- parse_list(opt$clinical_box_colors)
 
 # Prepare output folders
 base_out <- opt$output_dir
@@ -217,7 +219,8 @@ res <- Multi_Gene_Correlations_to_Signature(
     sum_duplicates = sum_duplicates,
     clinical_columns = clinical_columns,
     clinical_use_signature = clinical_use_signature,
-    clinical_use_genes = clinical_use_genes
+    clinical_use_genes = clinical_use_genes,
+    clinical_box_colors = clinical_box_colors
 )
 
 # Save tables
