@@ -26,4 +26,5 @@
 - Updated README examples to include the lowercase `all` sentinel by default and re-ran the entrypoint locally with and without `all` to verify both modes continue to succeed.
 - Added per-level r/p annotations to the signature-vs-categorical clinical box plots and revalidated both aggregate and non-aggregate runs to confirm the overlays render correctly.
 - Rebuilt the linux/amd64 container image and pushed it to GHCR as both `latest` and `v1.0.1` so the published runtime matches today's changes.
+- Published the GitHub Release for `v1.0.1` via `gh release create` using `docs/releases/v1.0.1.md` for the body and confirmed no additional automation references to the new docs/releases convention were required.
 
