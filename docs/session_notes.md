@@ -27,4 +27,5 @@
 - Added per-level r/p annotations to the signature-vs-categorical clinical box plots and revalidated both aggregate and non-aggregate runs to confirm the overlays render correctly.
 - Rebuilt the linux/amd64 container image and pushed it to GHCR as both `latest` and `v1.0.1` so the published runtime matches today's changes.
 - Published the GitHub Release for `v1.0.1` via `gh release create` using `docs/releases/v1.0.1.md` for the body and confirmed no additional automation references to the new docs/releases convention were required.
+- Ran `Rscript entrypoint.R` against `test_data/` with full clinical flags to smoke-test the pipeline post-release, writing outputs to `test_output/smoke_20260113_123311/`.
 
